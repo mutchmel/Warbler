@@ -1,0 +1,181 @@
+{% macro render_like_button(user, message, likes) %}
+  {% if user != g.user %}
+    {% if message.id in likes %}
+      <div class="unlike" data-message-id="{{ message.id}}">
+        <button class="btn btn-sm btn-primary">
+          <i class="fa fa-star"></i> 
+        </button>
+      </div>
+    {% else %}
+      <div class="like" data-message-id="{{ message.id }}">
+        <button class="btn btn-sm btn-secondary">
+          <i class="fa fa-thumbs-up"></i> 
+        </button>
+      </div>
+    {% endif %}
+  {% endif %}
+{% endmacro %}
+
+{% macro render_follow_button(user) %}
+  {% if user != g.user %}
+    {% if g.user.is_following(user) %}
+    <div class="unfollow" data-user-id="{{ user.id}}">
+      <button class="btn btn-sm btn-primary">
+        Unfollow 
+      </button>
+    </div>
+    {% else %}
+    <div class="follow" data-user-id="{{ user.id}}">
+      <button class="btn btn-sm btn-outline-primary">
+        Follow 
+      </button>
+    </div>
+    {% endif %}
+  {% endif %}
+{% endmacro %}
+
+{% macro render_message(message, user, likes) %}
+<li class="list-group-item">
+  <div class="row justify-content-between container-fluid px-0">
+    <div class="col-2">
+      <a href={{ url_for('users_show', user_id=user.id) }}>
+        <img src="{{ user.image_url }}" alt="" class="timeline-image">
+      </a>
+    </div>
+    <div class="col">
+      <a href={{ url_for('messages_show', message_id=message.id)}} class="message-link">
+        <div class="message-area">
+          <a href={{ url_for('users_show', user_id=user.id) }}>@{{ user.username }}</a>
+          <span class="text-muted">{{ message.timestamp.strftime('%d %B %Y') }}</span>
+          <p>{{ message.text }}</p>
+        </div>
+      </a>
+    </div>
+    <div class="col-2 pl-5">
+      {{ render_like_button(user, message, likes)}}
+    </div>
+  </div>
+</li>
+{% endmacro %}
+
+{% macro render_dm(dm, user) %}
+<li class="list-group-item">
+  <div class="row justify-content-between container-fluid px-0">
+    <div class="col-2">
+      <a href={{ url_for('users_show', user_id=dm.author.id) }}>
+        <img src="{{ dm.author.image_url }}" alt="" class="timeline-image">
+      </a>
+    </div>
+    <div class="col">
+        <div class="message-area">
+          <span>
+          <a href={{ url_for('users_show', user_id=dm.author_id) }}>@{{ dm.author.username }}</a>
+          -> 
+          <a href={{ url_for('users_show', user_id=dm.recipient_id) }}>@{{ dm.recipient.username }}</a>
+          </span>
+          <span class="text-muted">{{ dm.timestamp.strftime('%d %B %Y') }}</span>
+          <p>{{ dm.text }}</p>
+        </div>
+    </div>
+  </div>
+</li>
+{% endmacro %}
+
+{% macro render_user_card(user) %}
+<div class="col-lg-4 col-md-6 col-12">
+  <div class="card user-card">
+    <div class="card-inner">
+      <div class="image-wrapper">
+        <img src="{{ user.header_image_url }}" alt="" class="card-hero">
+      </div>
+      <div class="card-contents">
+        <a href={{ url_for('users_show', user_id=user.id) }} class="card-link">
+          <img src="{{ user.image_url }}" alt="Image for {{ user.username }}" class="card-image">
+          <p>@{{ user.username }}</p>
+        </a>
+        {{ render_follow_button(user) }}
+      </div>
+      <p class="card-bio">{{ user.bio }}</p>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro render_user_profile_buttons(user) %}
+  {% if g.user.id == user.id %}
+  <a href={{ url_for('profile') }} class="btn btn-outline-secondary">Edit Profile</a>
+  <a href={{ url_for('change_password') }} class="btn btn-outline-warning">Change Password</a>
+  <form method="POST" action={{ url_for('delete_user') }} class="form-inline">
+    <button class="btn btn-outline-danger ml-2">Delete Profile</button>
+  </form>
+  {% elif g.user %}
+    <a href={{ url_for('direct_message', user_id=user.id)}} class="btn btn-outline-primary">Send Message</a>
+    {{ render_follow_button(user) }}
+  {% endif %}
+{% endmacro %}
+
+{% macro render_stats_bar(user) %}
+<li class="stat">
+  <p class="small">Messages</p>
+  <h4>
+    <a class="messages-display-user" href={{ url_for('users_show', user_id=user.id) }}>{{ user.messages | length }}</a>
+  </h4>
+</li>
+<li class="stat">
+  <p class="small">Following</p>
+  <h4>
+    <a class="following-display" href={{ url_for('show_following', user_id=user.id) }}>{{ user.following | length }}</a>
+  </h4>
+</li>
+<li class="stat">
+  <p class="small">Followers</p>
+  <h4>
+    <a class="follower-display" href={{ url_for('users_followers', user_id=user.id) }}>{{ user.followers | length }}</a>
+  </h4>
+</li>
+<li class="stat">
+  <p class="small">Likes</p>
+  <h4>
+    <a class="likes-display" href={{ url_for('show_likes', user_id=user.id) }}>{{ user.likes | length }}</a>
+  </h4>
+</li>
+{% if g.user.id == user.id %}
+<li class="stat">
+  <p class="small">Inbox</p>
+  <h4>
+    <a class="follower-display" href={{ url_for('show_inbox')}}>{{ user.inbox | length }}</a>
+  </h4>
+</li>
+<li class="stat">
+  <p class="small">Outbox</p>
+  <h4>
+    <a class="likes-display" href={{ url_for('show_outbox') }}>{{ user.outbox | length }}</a>
+  </h4>
+</li>
+{% endif %}
+{% endmacro %}
+
+{% macro render_form_base(form, confirm_password=False) %}
+  {{ form.hidden_tag() }}
+
+  {% for field in form if field.widget.input_type != 'hidden' and field.name != 'password' %}
+    {% for error in field.errors %}
+      <span class="text-danger">{{ error }}</span>
+    {% endfor %}
+    {{ field(placeholder=field.label.text, class="form-control") }}
+  {% endfor %}
+
+  {% if form.password %}
+    {% if confirm_password %}
+    <p>To confirm changes, enter your password:</p>
+    {% endif %}
+    {% if form.password.errors %}
+      {% for error in form.password.errors %}
+        <span class="text-danger">
+        {{ error }}
+        </span>
+      {% endfor %}
+    {% endif %}
+    {{ form.password(placeholder="Password", class="form-control") }}
+  {% endif %}
+{% endmacro %}
